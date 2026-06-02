@@ -11,9 +11,16 @@ const userSockets = new Map();
 
 // Fungsi inisialisasi socket.io
 export const initSocket = (httpServer) => {
+  const allowedOrigins = [
+    process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : null,
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://taskflowfrontends.netlify.app",
+  ].filter(Boolean);
+
   io = new Server(httpServer, {
     cors: {
-      origin: "http://localhost:5173", // Ganti dengan frontend URL yang sesuai
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
       credentials: true,
     },

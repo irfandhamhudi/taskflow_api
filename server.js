@@ -87,6 +87,7 @@ app.use(
       },
     },
     crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   })
 );
 
@@ -116,7 +117,7 @@ if (process.env.NODE_ENV === "production") {
 
 // CORS configuration
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
+  process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace(/\/$/, "") : null,
   "http://localhost:5173",
   "http://localhost:5174",
   "https://taskflowfrontends.netlify.app",
@@ -205,12 +206,11 @@ const startServer = async () => {
     server.listen(PORT, () => {
       logger.info(`
         🚀 Server running in ${NODE_ENV} mode
-        🔗 URL: http://localhost:${PORT}
-        📊 Health: http://localhost:${PORT}/health
+        🔗 URL: ${process.env.BASE_URL}
+        📊 Health: ${process.env.BASE_URL}health
         ⚡ Socket.io ready on port ${PORT}
         📅 Started: ${new Date().toLocaleString()}
-        🗄️  Database: ${
-          mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
+        🗄️  Database: ${mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
         }
       `);
     });
