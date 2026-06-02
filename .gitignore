@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.production
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+.idea/
+dist/
+build/
