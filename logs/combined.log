@@ -1,0 +1,3 @@
+{"level":"info","message":"MongoDB Connected: ac-sjdyh3v-shard-00-00.omf9a5z.mongodb.net","timestamp":"2026-06-02 12:25:59:2559"}
+{"level":"info","message":"\n        🚀 Server running in production mode\n        🔗 URL: http://localhost:5005\n        📊 Health: http://localhost:5005/health\n        ⚡ Socket.io ready on port 5005\n        📅 Started: 6/2/2026, 12:25:59 PM\n        🗄️  Database: Connected\n      ","timestamp":"2026-06-02 12:25:59:2559"}
+{"level":"info","message":"::1 - - [02/Jun/2026:05:26:03 +0000] \"GET /health HTTP/1.1\" 200 141 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.8457\"","timestamp":"2026-06-02 12:26:03:263"}
