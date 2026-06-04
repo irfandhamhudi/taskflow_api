@@ -2,10 +2,17 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
-  console.log("Protect middleware called. Token exists:", !!req.cookies.token);
-  try {
-    const token = req.cookies.token;
+  let token = req.cookies.token;
 
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  console.log("Protect middleware called. Token exists:", !!token);
+  try {
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -88,10 +95,11 @@ export const socketAuth = async (socket, next) => {
 };
 
 const clearToken = (res) => {
+  const isProduction = process.env.NODE_ENV === "production";
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
     path: "/",
   });
 };

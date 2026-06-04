@@ -130,11 +130,12 @@ export const verifyOTP = async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    generateToken(res, user._id);
+    const token = generateToken(res, user._id);
 
     res.json({
       success: true,
       message: "Email verified successfully",
+      token,
       data: {
         id: user._id,
         name: user.name,
@@ -259,6 +260,7 @@ export const login = async (req, res) => {
     res.json({
       success: true,
       message: "Login successful",
+      token,
       data: {
         id: user._id,
         name: user.name,
@@ -733,6 +735,7 @@ export const googleLogin = async (req, res) => {
     res.json({
       success: true,
       message: "Google login successful",
+      token,
       data: {
         id: user._id,
         name: user.name,
@@ -838,6 +841,7 @@ export const githubLogin = async (req, res) => {
     res.json({
       success: true,
       message: "GitHub login successful",
+      token,
       data: {
         id: user._id,
         name: user.name,
