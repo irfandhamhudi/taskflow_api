@@ -3,30 +3,37 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Konfigurasi transporter yang BENAR untuk Gmail
-const transporter = nodemailer.createTransport({
-  service: "gmail", // atau gunakan konfigurasi manual di bawah
-  host: "smtp.gmail.com", // Hostname yang benar
-  port: 587, // Port untuk TLS
-  secure: false, // true untuk 465, false untuk 587
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  // Opsi tambahan untuk menghindari timeout
-  connectionTimeout: 10000, // 10 detik
-  socketTimeout: 10000, // 10 detik
-  greetingTimeout: 10000, // 10 detik
-});
+// Konfigurasi transporter email yang dinamis & robust
+const isSecure = process.env.EMAIL_SECURE === "true" || process.env.EMAIL_PORT === "465";
 
-// Atau gunakan cara yang lebih sederhana:
-const transporter2 = nodemailer.createTransport({
-  service: "gmail", // Ini akan otomatis menggunakan smtp.gmail.com
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const transporterConfig = process.env.EMAIL_SERVICE 
+  ? {
+      service: process.env.EMAIL_SERVICE,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    }
+  : {
+      host: process.env.EMAIL_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.EMAIL_PORT || "587"),
+      secure: isSecure,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        // Mengizinkan self-signed certificates untuk keandalan koneksi di beberapa server production
+        rejectUnauthorized: false,
+      },
+    };
+
+// Tambahkan timeout options
+transporterConfig.connectionTimeout = 15000; // 15 detik
+transporterConfig.socketTimeout = 15000;
+transporterConfig.greetingTimeout = 15000;
+
+const transporter = nodemailer.createTransport(transporterConfig);
 
 // Verifikasi koneksi
 transporter.verify((error, success) => {

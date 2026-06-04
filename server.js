@@ -207,7 +207,7 @@ const startServer = async () => {
       logger.info(`
         🚀 Server running in ${NODE_ENV} mode
         🔗 URL: ${process.env.BASE_URL}
-        📊 Health: ${process.env.BASE_URL}health
+        📊 Health: ${process.env.BASE_URL}/health
         ⚡ Socket.io ready on port ${PORT}
         📅 Started: ${new Date().toLocaleString()}
         🗄️  Database: ${mongoose.connection.readyState === 1 ? "Connected" : "Disconnected"
