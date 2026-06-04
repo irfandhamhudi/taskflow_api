@@ -12,8 +12,7 @@ export const getGoogleAuthUrl = (state) => {
   const client = getOauth2Client();
   console.log("Generating Google Auth URL with Redirect URI:", client.redirectUri);
   const scopes = [
-    "https://www.googleapis.com/auth/calendar.events",
-    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/userinfo.email",
   ];
 
