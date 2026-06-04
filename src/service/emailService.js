@@ -6,7 +6,7 @@ dotenv.config();
 // Konfigurasi transporter email yang dinamis & robust
 const isSecure = process.env.EMAIL_SECURE === "true" || process.env.EMAIL_PORT === "465";
 
-const transporterConfig = process.env.EMAIL_SERVICE 
+const transporterConfig = (process.env.EMAIL_SERVICE && !process.env.EMAIL_HOST)
   ? {
       service: process.env.EMAIL_SERVICE,
       auth: {

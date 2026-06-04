@@ -21,6 +21,7 @@ export const getGoogleAuthUrl = (state) => {
     scope: scopes,
     state: state,
     prompt: "consent",
+    include_granted_scopes: true,
   });
 };
 
@@ -58,11 +59,18 @@ export const createGoogleMeet = async (tokens, meetingDetails) => {
     },
   };
 
-  const response = await calendar.events.insert({
-    calendarId: "primary",
-    resource: event,
-    conferenceDataVersion: 1,
-  });
+  try {
+    const response = await calendar.events.insert({
+      calendarId: "primary",
+      resource: event,
+      conferenceDataVersion: 1,
+    });
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    if (error.message && error.message.includes("insufficient authentication scopes")) {
+      throw new Error("Google Calendar permission is insufficient. Please disconnect and reconnect your Google account to grant Calendar access.");
+    }
+    throw error;
+  }
 };
