@@ -33,6 +33,14 @@ transporterConfig.connectionTimeout = 15000; // 15 detik
 transporterConfig.socketTimeout = 15000;
 transporterConfig.greetingTimeout = 15000;
 
+console.log("📧 Initializing email transporter with config:", {
+  service: transporterConfig.service || "custom",
+  host: transporterConfig.host || "N/A",
+  port: transporterConfig.port || "N/A",
+  secure: transporterConfig.secure || "N/A",
+  user: process.env.EMAIL_USER || "N/A",
+});
+
 const transporter = nodemailer.createTransport(transporterConfig);
 
 // Verifikasi koneksi
@@ -90,6 +98,13 @@ export const sendEmail = async ({ to, subject, html }) => {
     return info;
   } catch (error) {
     console.error("❌ Failed to send email:");
+    console.error("Active transporter configuration:", {
+      service: transporterConfig.service || "custom",
+      host: transporterConfig.host || "N/A",
+      port: transporterConfig.port || "N/A",
+      secure: transporterConfig.secure || "N/A",
+      user: process.env.EMAIL_USER || "N/A",
+    });
     console.error("Error name:", error.name);
     console.error("Error message:", error.message);
     console.error("Error code:", error.code);
