@@ -78,7 +78,7 @@ export const sendEmail = async ({ to, subject, html }) => {
     console.log(`📧 Using sender: ${process.env.EMAIL_USER}`);
 
     const mailOptions = {
-      from: `"TaskFlow" <${process.env.EMAIL_USER}>`,
+      from: process.env.EMAIL_FROM || `"TaskFlow" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: subject,
       html: html,
