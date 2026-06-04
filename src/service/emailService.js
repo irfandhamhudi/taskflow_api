@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import axios from "axios";
 
 dotenv.config();
 
@@ -72,6 +73,53 @@ export const sendEmail = async ({ to, subject, html }) => {
       console.error("EMAIL_USER:", process.env.EMAIL_USER ? "Set" : "NOT SET");
       console.error("EMAIL_PASS:", process.env.EMAIL_PASS ? "Set" : "NOT SET");
       throw new Error("Email configuration missing");
+    }
+
+    // Jika password diawali dengan xkeysib-, berarti ini API Key Brevo
+    // Kita gunakan REST API Brevo karena port SMTP 465/587/2525 sering diblokir oleh hosting production
+    if (process.env.EMAIL_PASS && process.env.EMAIL_PASS.startsWith("xkeysib-")) {
+      console.log(`📧 Sending email to: ${to} via Brevo HTTP API...`);
+      
+      let senderEmail = process.env.EMAIL_USER || "noreply@taskflow.com";
+      let senderName = "TaskFlow";
+      
+      const fromStr = process.env.EMAIL_FROM || "";
+      const emailMatch = fromStr.match(/<([^>]+)>/);
+      if (emailMatch) {
+        senderEmail = emailMatch[1];
+        const nameMatch = fromStr.match(/^"([^"]+)"/);
+        if (nameMatch) {
+          senderName = nameMatch[1];
+        } else {
+          senderName = fromStr.split("<")[0].trim() || "TaskFlow";
+        }
+      } else if (fromStr.includes("@")) {
+        senderEmail = fromStr.trim();
+      }
+
+      const response = await axios.post("https://api.brevo.com/v3/smtp/email", {
+        sender: {
+          name: senderName,
+          email: senderEmail,
+        },
+        to: [
+          {
+            email: to,
+          }
+        ],
+        subject: subject,
+        htmlContent: html,
+      }, {
+        headers: {
+          "accept": "application/json",
+          "content-type": "application/json",
+          "api-key": process.env.EMAIL_PASS,
+        }
+      });
+
+      console.log("✅ Email sent successfully via Brevo HTTP API!");
+      console.log("📧 Message ID:", response.data.messageId);
+      return { messageId: response.data.messageId };
     }
 
     console.log(`📧 Sending email to: ${to}`);
