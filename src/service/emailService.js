@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import axios from "axios";
+import { Resend } from "resend";
 
 dotenv.config();
 
@@ -35,9 +35,11 @@ transporterConfig.socketTimeout = 15000;
 transporterConfig.greetingTimeout = 15000;
 
 let transporter = null;
+let resend = null;
 
 if (process.env.RESEND_API_KEY) {
-  console.log("🚀 Resend HTTP API is configured and active for sending emails.");
+  resend = new Resend(process.env.RESEND_API_KEY);
+  console.log("🚀 Resend Node SDK is configured and active for sending emails.");
 } else {
   console.log("📧 Initializing email transporter with config:", {
     service: transporterConfig.service || "custom",
@@ -75,31 +77,25 @@ export const sendEmail = async ({ to, subject, html }) => {
 
     // Jika menggunakan Resend API
     if (process.env.RESEND_API_KEY) {
-      console.log(`📧 Sending email to: ${to} via Resend HTTP API`);
-      // Gunakan EMAIL_FROM dari env, atau default ke onboarding@resend.dev jika belum ada verified domain
+      console.log(`📧 Sending email to: ${to} via Resend Node SDK`);
       const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
       
       console.log(`📧 Using sender: ${fromEmail}`);
 
-      const response = await axios.post(
-        "https://api.resend.com/emails",
-        {
-          from: fromEmail,
-          to: [to],
-          subject: subject,
-          html: html,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const { data, error } = await resend.emails.send({
+        from: fromEmail,
+        to: to,
+        subject: subject,
+        html: html,
+      });
 
-      console.log("✅ Email sent successfully via Resend!");
-      console.log("📧 Resend Message ID:", response.data.id);
-      return response.data;
+      if (error) {
+        throw error;
+      }
+
+      console.log("✅ Email sent successfully via Resend Node SDK!");
+      console.log("📧 Resend Message ID:", data.id);
+      return data;
     }
 
     // Jika menggunakan Nodemailer SMTP
@@ -135,10 +131,7 @@ export const sendEmail = async ({ to, subject, html }) => {
   } catch (error) {
     console.error("❌ Failed to send email:");
     if (process.env.RESEND_API_KEY) {
-      console.error("Active configuration: Resend HTTP API");
-      if (error.response && error.response.data) {
-        console.error("Resend API Error Response:", JSON.stringify(error.response.data));
-      }
+      console.error("Active configuration: Resend HTTP SDK");
     } else {
       console.error("Active transporter configuration:", {
         service: transporterConfig.service || "custom",
@@ -150,14 +143,14 @@ export const sendEmail = async ({ to, subject, html }) => {
     }
     console.error("Error name:", error.name);
     console.error("Error message:", error.message);
-    console.error("Error code:", error.code);
+    console.error("Error code:", error.code || "N/A");
     console.error("Error stack:", error.stack);
 
     // Berikan pesan error yang lebih spesifik
     let errorMessage = "Failed to send email";
 
     if (process.env.RESEND_API_KEY) {
-      errorMessage = error.response?.data?.message || error.message || "Resend API Error";
+      errorMessage = error.message || "Resend SDK Error";
     } else {
       if (error.code === "EDNS" || error.code === "ENOTFOUND") {
         errorMessage =

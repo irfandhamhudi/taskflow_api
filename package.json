@@ -42,6 +42,7 @@
     "nodemailer-express-handlebars": "^7.0.0",
     "path": "^0.12.7",
     "rate-limiter-flexible": "^9.0.0",
+    "resend": "^6.12.4",
     "sharp": "^0.34.5",
     "socket.io": "^4.8.1",
     "uuid": "^13.0.0",
