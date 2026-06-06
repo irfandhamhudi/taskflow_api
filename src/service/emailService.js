@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import axios from "axios";
 
 dotenv.config();
 
@@ -33,30 +34,36 @@ transporterConfig.connectionTimeout = 15000; // 15 detik
 transporterConfig.socketTimeout = 15000;
 transporterConfig.greetingTimeout = 15000;
 
-console.log("📧 Initializing email transporter with config:", {
-  service: transporterConfig.service || "custom",
-  host: transporterConfig.host || "N/A",
-  port: transporterConfig.port || "N/A",
-  secure: transporterConfig.secure || "N/A",
-  user: process.env.EMAIL_USER || "N/A",
-});
+let transporter = null;
 
-const transporter = nodemailer.createTransport(transporterConfig);
+if (process.env.RESEND_API_KEY) {
+  console.log("🚀 Resend HTTP API is configured and active for sending emails.");
+} else {
+  console.log("📧 Initializing email transporter with config:", {
+    service: transporterConfig.service || "custom",
+    host: transporterConfig.host || "N/A",
+    port: transporterConfig.port || "N/A",
+    secure: transporterConfig.secure || "N/A",
+    user: process.env.EMAIL_USER || "N/A",
+  });
 
-// Verifikasi koneksi
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ Error connecting to email server:", error);
-    console.error("❌ Error details:", {
-      message: error.message,
-      code: error.code,
-      hostname: error.hostname,
-    });
-  } else {
-    console.log("✅ Email server is ready to send messages");
-    console.log("✅ Connected to:", success);
-  }
-});
+  transporter = nodemailer.createTransport(transporterConfig);
+
+  // Verifikasi koneksi
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error("❌ Error connecting to email server:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        code: error.code,
+        hostname: error.hostname,
+      });
+    } else {
+      console.log("✅ Email server is ready to send messages");
+      console.log("✅ Connected to:", success);
+    }
+  });
+}
 
 // Fungsi sendEmail dengan error handling yang lebih baik
 export const sendEmail = async ({ to, subject, html }) => {
@@ -66,7 +73,36 @@ export const sendEmail = async ({ to, subject, html }) => {
       throw new Error("Missing email parameters");
     }
 
-    // Validasi credentials
+    // Jika menggunakan Resend API
+    if (process.env.RESEND_API_KEY) {
+      console.log(`📧 Sending email to: ${to} via Resend HTTP API`);
+      // Gunakan EMAIL_FROM dari env, atau default ke onboarding@resend.dev jika belum ada verified domain
+      const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+      
+      console.log(`📧 Using sender: ${fromEmail}`);
+
+      const response = await axios.post(
+        "https://api.resend.com/emails",
+        {
+          from: fromEmail,
+          to: [to],
+          subject: subject,
+          html: html,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("✅ Email sent successfully via Resend!");
+      console.log("📧 Resend Message ID:", response.data.id);
+      return response.data;
+    }
+
+    // Jika menggunakan Nodemailer SMTP
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error("❌ Email credentials missing in .env file");
       console.error("EMAIL_USER:", process.env.EMAIL_USER ? "Set" : "NOT SET");
@@ -74,8 +110,7 @@ export const sendEmail = async ({ to, subject, html }) => {
       throw new Error("Email configuration missing");
     }
 
-
-    console.log(`📧 Sending email to: ${to}`);
+    console.log(`📧 Sending email to: ${to} via SMTP`);
     console.log(`📧 Using sender: ${process.env.EMAIL_USER}`);
 
     const mailOptions = {
@@ -99,13 +134,20 @@ export const sendEmail = async ({ to, subject, html }) => {
     return info;
   } catch (error) {
     console.error("❌ Failed to send email:");
-    console.error("Active transporter configuration:", {
-      service: transporterConfig.service || "custom",
-      host: transporterConfig.host || "N/A",
-      port: transporterConfig.port || "N/A",
-      secure: transporterConfig.secure || "N/A",
-      user: process.env.EMAIL_USER || "N/A",
-    });
+    if (process.env.RESEND_API_KEY) {
+      console.error("Active configuration: Resend HTTP API");
+      if (error.response && error.response.data) {
+        console.error("Resend API Error Response:", JSON.stringify(error.response.data));
+      }
+    } else {
+      console.error("Active transporter configuration:", {
+        service: transporterConfig.service || "custom",
+        host: transporterConfig.host || "N/A",
+        port: transporterConfig.port || "N/A",
+        secure: transporterConfig.secure || "N/A",
+        user: process.env.EMAIL_USER || "N/A",
+      });
+    }
     console.error("Error name:", error.name);
     console.error("Error message:", error.message);
     console.error("Error code:", error.code);
@@ -114,15 +156,19 @@ export const sendEmail = async ({ to, subject, html }) => {
     // Berikan pesan error yang lebih spesifik
     let errorMessage = "Failed to send email";
 
-    if (error.code === "EDNS" || error.code === "ENOTFOUND") {
-      errorMessage =
-        "DNS lookup failed. Check your internet connection or SMTP server settings.";
-    } else if (error.code === "EAUTH") {
-      errorMessage = "Authentication failed. Check your email and password.";
-    } else if (error.code === "ECONNECTION") {
-      errorMessage = "Connection failed. Check your network or SMTP server.";
-    } else if (error.code === "ETIMEDOUT") {
-      errorMessage = "Connection timed out. Try again later.";
+    if (process.env.RESEND_API_KEY) {
+      errorMessage = error.response?.data?.message || error.message || "Resend API Error";
+    } else {
+      if (error.code === "EDNS" || error.code === "ENOTFOUND") {
+        errorMessage =
+          "DNS lookup failed. Check your internet connection or SMTP server settings.";
+      } else if (error.code === "EAUTH") {
+        errorMessage = "Authentication failed. Check your email and password.";
+      } else if (error.code === "ECONNECTION") {
+        errorMessage = "Connection failed. Check your network or SMTP server.";
+      } else if (error.code === "ETIMEDOUT") {
+        errorMessage = "Connection timed out. Try again later.";
+      }
     }
 
     throw new Error(errorMessage);
