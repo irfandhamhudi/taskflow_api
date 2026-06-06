@@ -7,7 +7,8 @@ import {
   getZoomAuthUrl, 
   exchangeZoomCode, 
   createZoomMeeting,
-  refreshZoomToken 
+  refreshZoomToken,
+  getZoomServerToken
 } from "../service/zoomService.js";
 import { 
   getGoogleAuthUrl, 
@@ -29,7 +30,10 @@ export const initiateAuth = async (req, res) => {
   try {
     let authUrl = "";
     if (platform === "zoom") {
-      authUrl = getZoomAuthUrl(userId.toString());
+      return res.status(400).json({ 
+        success: false, 
+        message: "Zoom is integrated globally for all users and does not require individual account linking." 
+      });
     } else if (platform === "google") {
       authUrl = getGoogleAuthUrl(userId.toString());
     } else {
@@ -79,13 +83,7 @@ export const handleCallback = async (req, res) => {
     res.clearCookie("oauth_userId");
 
     if (platform === "zoom") {
-      const tokens = await exchangeZoomCode(code);
-      user.externalAccounts.zoom = {
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiryDate: new Date(Date.now() + tokens.expires_in * 1000),
-        zoomId: tokens.user_id,
-      };
+      return res.status(400).json({ success: false, message: "Individual Zoom account linking is disabled." });
     } else if (platform === "google") {
       const tokens = await exchangeGoogleCode(code);
       user.externalAccounts.google = {
@@ -118,37 +116,20 @@ export const createMeeting = async (req, res) => {
     let meetingData = null;
 
     if (platform === "zoom") {
-      // Check if zoom is connected
-      if (!user.externalAccounts.zoom?.accessToken) {
-        return res.status(400).json({ success: false, message: "Zoom not connected" });
-      }
-
-      // Check if token expired and refresh
-      if (new Date() > user.externalAccounts.zoom.expiryDate) {
-        try {
-          const tokens = await refreshZoomToken(user.externalAccounts.zoom.refreshToken);
-          user.externalAccounts.zoom.accessToken = tokens.access_token;
-          user.externalAccounts.zoom.refreshToken = tokens.refresh_token || user.externalAccounts.zoom.refreshToken;
-          user.externalAccounts.zoom.expiryDate = new Date(Date.now() + tokens.expires_in * 1000);
-          await user.save();
-        } catch (refreshError) {
-          console.error("Zoom token refresh failed:", refreshError.response?.data || refreshError.message);
-          
-          // If token is invalid or expired, clear and ask to reconnect
-          if (refreshError.response?.status === 400 || refreshError.response?.status === 401) {
-            user.externalAccounts.zoom = undefined;
-            await user.save();
-            return res.status(401).json({ 
-              success: false, 
-              message: "Zoom connection has expired. Please disconnect and reconnect your Zoom account in the Dashboard." 
-            });
-          }
-          throw refreshError;
-        }
+      // Get the Server-to-Server OAuth access token
+      let accessToken;
+      try {
+        accessToken = await getZoomServerToken();
+      } catch (tokenError) {
+        console.error("Failed to obtain Zoom Server-to-Server OAuth token:", tokenError.message);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to connect to Zoom service. Please ensure system-wide Zoom credentials are correctly configured." 
+        });
       }
 
       const duration = Math.round((new Date(endTime) - new Date(startTime)) / 60000);
-      const zoomMeeting = await createZoomMeeting(user.externalAccounts.zoom.accessToken, {
+      const zoomMeeting = await createZoomMeeting(accessToken, {
         title,
         startTime,
         duration,
@@ -373,7 +354,8 @@ export const disconnectPlatform = async (req, res) => {
     const user = await User.findById(userId);
     
     if (platform === "zoom") {
-      user.externalAccounts.zoom = undefined;
+      // Zoom is system-wide, so disconnect is a no-op or returns success
+      return res.json({ success: true, message: "Zoom is globally integrated and cannot be disconnected by individual users." });
     } else if (platform === "google") {
       user.externalAccounts.google = undefined;
     } else {
